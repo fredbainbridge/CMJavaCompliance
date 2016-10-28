@@ -124,12 +124,11 @@ $DataSet = @()
 $JREPaths = @("C:\Program Files (x86)\Java\jre7")
 
 #Enable Java logging by enumerating the JREs from the registry
-#32 bit instances of Java on a 64 bit machine.
-$JREPaths = "HKLM:\Software\WOW6432Node\JavaSoft\Java Runtime Environment","HKLM:\Software\JavaSoft\Java Runtime Environment"
+#32 bit instances of Java on a 64 bit machine.$JREPaths = "HKLM:\Software\WOW6432Node\JavaSoft\Java Runtime Environment","HKLM:\Software\JavaSoft\Java Runtime Environment"
 $JREPaths | ForEach-Object {
-     if(Test-Path $PSItem)
+     if(Test-Path $_)
     {
-        $Keys = Get-ChildItem $PSItem
+        $Keys = Get-ChildItem $_
         $JREs = $Keys | Foreach-Object {Get-ItemProperty $_.PsPath }
         ForEach ($JRE in $JREs) 
         {
@@ -147,6 +146,7 @@ $JREPaths | ForEach-Object {
         }
     }
 }
+
 #Enumerate user profile folders from WMI
 Try {
     IF ($LoggingEnable -eq $true) {Log-ScriptEvent -Value "Gather user profile paths." -Severity 1}
@@ -158,7 +158,7 @@ Try {
 
 #Check each returned folder for a java uasge log.
 Foreach ($user in $users) {
-    Write-Host ($($user.LocalPath) -split '\\')[-1].ToString()
+    #Write-Host ($($user.LocalPath) -split '\\')[-1].ToString()
     IF ($LoggingEnable -eq $true) {Log-ScriptEvent -Value "Checking for $($user.LocalPath)\$($UTLogFileName)" -Severity 1}
     $path = test-path "$($user.LocalPath)\$($UTLogFileName)"
     
@@ -166,12 +166,24 @@ Foreach ($user in $users) {
         IF ($LoggingEnable -eq $true) {Log-ScriptEvent -Value "Found $($user.LocalPath)\$($UTLogFileName), attempting to load data." -Severity 1}
             Try {
                 $Data = import-csv "$($user.LocalPath)\$($UTLogFileName)" -Delimiter '^' -Header $header
-                $Dataset += $Data | Select @{Name="User";Expression={($($user.LocalPath) -split '\\')[-1].ToString()}},Type,DateTime,HostIP,@{Name="Command";Expression={if($_.Command -like 'http*'){($_.Command -split ': ')[0].ToString() } else {($_.Command -split ':')[0]}}},JREPath,JavaVer,JREVer,JavaVen,JVMVen
-                IF ($LoggingEnable -eq $true) {Log-ScriptEvent -Value "Parsing $($user.LocalPath)\$($UTLogFileName)" -Severity 1}
+                                $Dataset += $Data | Select @{Name="User";Expression={($($user.LocalPath) -split '\\')[-1].ToString()}},Type,DateTime,HostIP,@{Name="Command";Expression={if($_.Command -like 'http*' -or $_.Command -like ' http*'){($_.Command -split ': ')[0].ToString() } else 
+                    {
+                        if(([string]$_.Command).StartsWith(' C:\') -or ([string]$_.Command).StartsWith('C:\') ) #deal with locally run jar files.
+                        {
+                            $_.Command
+                        }
+                        else
+                        {
+                            (($_.Command -split ':')[0]) #everything else.  
+                        }
+                     }
+                     }
+                     },JREPath,JavaVer,JREVer,JavaVen,JVMVen
             } Catch {
                 Write-Host "Wowzzers" #Wicked error here
                 IF ($LoggingEnable -eq $true) {Log-ScriptEvent -Value "Error parsing $($user.LocalPath)\$($UTLogFileName)" -Severity 3}
-            Exit 5150
+            #Exit 5150
+            
         }
     }
 }
