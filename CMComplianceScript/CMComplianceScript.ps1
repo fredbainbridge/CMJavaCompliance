@@ -124,7 +124,9 @@ $DataSet = @()
 $JREPaths = @("C:\Program Files (x86)\Java\jre7")
 
 #Enable Java logging by enumerating the JREs from the registry
-#32 bit instances of Java on a 64 bit machine.$JREPaths = "HKLM:\Software\WOW6432Node\JavaSoft\Java Runtime Environment","HKLM:\Software\JavaSoft\Java Runtime Environment"
+#using $_ because this could be run on PS 2.0 and $PSItem isn't a thing yet in PS2.0 
+#32 bit  and 64 bit instances of Java on a 64 bit machine.
+$JREPaths = "HKLM:\Software\WOW6432Node\JavaSoft\Java Runtime Environment","HKLM:\Software\JavaSoft\Java Runtime Environment"
 $JREPaths | ForEach-Object {
      if(Test-Path $_)
     {
@@ -134,7 +136,9 @@ $JREPaths | ForEach-Object {
         {
             IF ($LoggingEnable -eq $true) {Log-ScriptEvent -Value "Interogating JRE path $($JRE.JavaHome)" -Severity 1}
             $JREPath = test-path "$($JRE.JavaHome)\lib\management"
+            Log-ScriptEvent -Value "Testing for $($JRE.JavaHome)\lib\management" -Severity 1
             if ($JREPath) {
+                Log-ScriptEvent -Value "Found $($JRE.JavaHome)\lib\management" -Severity 1
                 $UTProps = test-path "$($JRE.JavaHome)\lib\management\usagetracker.properties"
                 if (-Not $UTProps) {
                     IF ($LoggingEnable -eq $true) {Log-ScriptEvent -Value "Creating $($JRE.JavaHome)\lib\management\usagetracker.properties" -Severity 1}
